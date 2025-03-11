@@ -1,0 +1,17 @@
+{
+  "name": "my-chrome-extension",
+  "version": "1.0.0",
+  "description": "Chrome Extension with TypeScript",
+  "scripts": {
+    "build": "tsc && webpack --config webpack.config.js",
+    "watch": "webpack --config webpack.config.js --watch"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.254",
+    "copy-webpack-plugin": "^12.0.2",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.90.1",
+    "webpack-cli": "^5.1.4"
+  }
+} 
