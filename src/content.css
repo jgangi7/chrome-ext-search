@@ -83,3 +83,37 @@ button:hover {
   border-bottom: 2px solid #7a8f64;
   box-shadow: 0 0 4px rgba(156, 179, 128, 0.5);
 }
+
+.search-input {
+  width: 100%;
+  padding: 8px 70px 8px 12px;
+  border: none;
+  font-size: 14px;
+  box-sizing: border-box;
+  outline: none;
+  background: #9CB380;
+  color: white;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Prevent autofill styling */
+.search-input:-webkit-autofill,
+.search-input:-webkit-autofill:hover,
+.search-input:-webkit-autofill:focus,
+.search-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #9CB380 inset !important;
+  -webkit-text-fill-color: white !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Remove browser-specific decorations */
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-results-button,
+.search-input::-webkit-search-results-decoration,
+.search-input::-ms-clear,
+.search-input::-ms-reveal {
+  display: none;
+}
