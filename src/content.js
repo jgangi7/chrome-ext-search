@@ -187,13 +187,23 @@ class SearchManager {
 
   updateHighlightStyles() {
     this.highlights.forEach((highlight, index) => {
+      // Remove all theme classes first
+      highlight.classList.remove('theme-purple', 'theme-blue', 'theme-gold');
+      
+      // Remove current highlight class
+      highlight.classList.remove('chrome-ext-search-highlight-current');
+      
+      // Get the stored theme for this highlight
+      const storedTheme = highlight.dataset.theme;
+      
+      // Add theme class if not default
+      if (storedTheme && storedTheme !== 'default') {
+        highlight.classList.add(`theme-${storedTheme}`);
+      }
+      
+      // Add current highlight class if this is the current index
       if (index === this.currentHighlightIndex) {
         highlight.classList.add('chrome-ext-search-highlight-current');
-        if (this.currentTheme !== 'default') {
-          highlight.classList.add(`theme-${this.currentTheme}`);
-        }
-      } else {
-        highlight.classList.remove('chrome-ext-search-highlight-current');
       }
     });
   }
