@@ -1,13 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "My Chrome Extension",
-  "version": "1.0.0",
-  "description": "A Chrome Extension built with JavaScript, allowing search for a word in the current page multiple times!",
+  "name": "Chrome Extension Search",
+  "version": "1.0",
+  "description": "A JavaScript-based Chrome extension that adds a search functionality to any webpage",
   "permissions": [
-    "storage",
     "activeTab",
     "scripting",
-    "commands"
+    "storage"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -39,12 +38,12 @@
     "128": "icon.png"
   },
   "commands": {
-    "activate-search": {
+    "toggle-search": {
       "suggested_key": {
         "default": "Ctrl+Shift+F",
         "mac": "Command+Shift+F"
       },
-      "description": "Activate dual search"
+      "description": "Toggle search popup"
     }
   }
 } 

@@ -15,6 +15,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 class SearchManager {
   constructor() {
     this.highlights = [];
+    this.persistentHighlights = new Map(); // Map to store persistent highlights by query
     this.currentHighlightIndex = -1;
     this.setupMessageListener();
   }
@@ -28,7 +29,11 @@ class SearchManager {
           sendResponse({ status: 'ok' });
           break;
         case 'search':
-          this.handleSearch(request.query).then(response => {
+          this.handleSearch(request.query, request.persist).then(response => {
+            // Only log search when persist flag is true (Enter key pressed)
+            if (request.persist) {
+              this.logSearch(request.query, response.matchCount);
+            }
             sendResponse(response);
           });
           break;
@@ -44,8 +49,29 @@ class SearchManager {
     });
   }
 
-  async handleSearch(query) {
-    this.clearHighlights();
+  async logSearch(query, matchCount) {
+    const searchLog = {
+      timestamp: new Date().toISOString(),
+      query: query,
+      matchCount: matchCount,
+      url: window.location.href,
+      title: document.title
+    };
+
+    try {
+      // Send search log to background script for storage
+      await chrome.runtime.sendMessage({
+        action: 'logSearch',
+        searchLog: searchLog
+      });
+    } catch (error) {
+      console.error('Error logging search:', error);
+    }
+  }
+
+  async handleSearch(query, persist = false) {
+    // Clear temporary highlights but keep persistent ones
+    this.clearTemporaryHighlights();
     
     if (!query) {
       return { matchCount: 0, currentMatch: 0 };
@@ -77,6 +103,7 @@ class SearchManager {
       nodes.push(node);
     }
 
+    const newHighlights = [];
     nodes.forEach(textNode => {
       const text = textNode.textContent || '';
       const matches = text.match(regex);
@@ -90,16 +117,25 @@ class SearchManager {
           
           if (i < parts.length - 1) {
             const highlight = document.createElement('span');
-            highlight.className = 'chrome-ext-search-highlight';
+            highlight.className = persist ? 
+              'chrome-ext-search-highlight chrome-ext-search-persistent' : 
+              'chrome-ext-search-highlight';
             highlight.textContent = matches[i];
+            highlight.dataset.query = query; // Store query for reference
             fragment.appendChild(highlight);
-            this.highlights.push(highlight);
+            newHighlights.push(highlight);
           }
         });
         
         textNode.parentNode?.replaceChild(fragment, textNode);
       }
     });
+
+    // Store highlights based on persistence
+    if (persist) {
+      this.persistentHighlights.set(query, newHighlights);
+    }
+    this.highlights = newHighlights;
 
     // Set initial highlight
     if (this.highlights.length > 0) {
@@ -153,15 +189,19 @@ class SearchManager {
     });
   }
 
-  clearHighlights() {
-    this.highlights.forEach(highlight => {
+  clearTemporaryHighlights() {
+    // Only clear highlights that aren't persistent
+    const highlightsToRemove = document.querySelectorAll('.chrome-ext-search-highlight:not(.chrome-ext-search-persistent)');
+    highlightsToRemove.forEach(highlight => {
       const parent = highlight.parentNode;
       if (parent) {
         parent.replaceChild(document.createTextNode(highlight.textContent || ''), highlight);
         parent.normalize();
       }
     });
-    this.highlights = [];
+    
+    // Update highlights array to only include current search highlights
+    this.highlights = Array.from(document.querySelectorAll('.chrome-ext-search-highlight'));
     this.currentHighlightIndex = -1;
   }
 }

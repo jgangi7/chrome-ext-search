@@ -1,6 +1,11 @@
 // Background script
 console.log('Background script starting...');
 
+// Initialize search logs in storage
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.set({ searchLogs: [] });
+});
+
 // Listen for extension installation or update
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('Extension installed/updated:', details.reason);
@@ -13,12 +18,21 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // Listen for messages from content script or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Received message:', request);
-  if (request.action === 'contentScriptLoaded') {
-    console.log('Content script loaded successfully');
+  console.log('Message received in background:', request);
+
+  switch (request.action) {
+    case 'contentScriptLoaded':
+      console.log('Content script loaded in tab:', sender.tab?.id);
+      sendResponse({ status: 'acknowledged' });
+      break;
+
+    case 'logSearch':
+      handleSearchLog(request.searchLog);
+      sendResponse({ status: 'logged' });
+      break;
   }
-  sendResponse({ status: 'received' });
-  return true; // Keep the message channel open for async response
+
+  return true;
 });
 
 // Check if URL is restricted
@@ -39,6 +53,15 @@ chrome.commands.onCommand.addListener((command) => {
   if (command === 'activate-search') {
     console.log('Activate search command received');
     handleActivateSearch();
+  }
+
+  if (command === 'toggle-search') {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const activeTab = tabs[0];
+      if (activeTab?.id) {
+        chrome.action.openPopup();
+      }
+    });
   }
 });
 
@@ -90,5 +113,28 @@ async function handleActivateSearch() {
     }
   } catch (error) {
     console.error('Error in activate-search command:', error);
+  }
+}
+
+// Handle storing search logs
+async function handleSearchLog(searchLog) {
+  try {
+    // Get existing logs
+    const result = await chrome.storage.local.get('searchLogs');
+    const searchLogs = result.searchLogs || [];
+
+    // Add new log
+    searchLogs.push(searchLog);
+
+    // Keep only the last 1000 searches
+    if (searchLogs.length > 1000) {
+      searchLogs.shift();
+    }
+
+    // Store updated logs
+    await chrome.storage.local.set({ searchLogs });
+    console.log('Search logged:', searchLog);
+  } catch (error) {
+    console.error('Error storing search log:', error);
   }
 } 

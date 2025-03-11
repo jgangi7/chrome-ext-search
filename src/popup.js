@@ -30,6 +30,7 @@ async function initializePopup() {
 
     // Setup event listeners
     searchInput.addEventListener('input', handleSearch);
+    searchInput.addEventListener('keydown', handleKeyDown);
     prevButton.addEventListener('click', () => navigateSearch('prev'));
     nextButton.addEventListener('click', () => navigateSearch('next'));
 
@@ -68,6 +69,37 @@ async function ensureContentScriptLoaded(retryCount = 0) {
   }
 }
 
+// Handle keydown events
+async function handleKeyDown(event) {
+  if (event.key === 'Enter' && searchInput.value.trim()) {
+    try {
+      if (!contentScriptLoaded) {
+        await ensureContentScriptLoaded();
+      }
+
+      // Send search request with persist flag
+      const response = await chrome.tabs.sendMessage(currentTab.id, {
+        action: 'search',
+        query: searchInput.value,
+        persist: true
+      });
+
+      // Update UI with search results
+      if (response && typeof response.matchCount === 'number') {
+        updateButtons(response.matchCount);
+        if (response.matchCount > 0) {
+          searchStats.textContent = `${response.currentMatch} of ${response.matchCount}`;
+        } else {
+          searchStats.textContent = 'No matches';
+        }
+      }
+    } catch (error) {
+      console.error('Error on Enter search:', error);
+      searchStats.textContent = 'Search error';
+    }
+  }
+}
+
 // Handle search input
 function handleSearch() {
   if (searchTimeout) {
@@ -87,10 +119,11 @@ function handleSearch() {
         await ensureContentScriptLoaded();
       }
 
-      // Send search request to content script
+      // Send search request without persist flag for live search
       const response = await chrome.tabs.sendMessage(currentTab.id, {
         action: 'search',
-        query: query
+        query: query,
+        persist: false
       });
 
       // Update UI with search results
