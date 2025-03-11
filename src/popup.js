@@ -1,7 +1,12 @@
 let currentTab = null;
 let searchTimeout = null;
 let contentScriptLoaded = false;
+let currentTheme = 'default';
 const MAX_RETRIES = 3;
+
+// Theme sequence
+const THEMES = ['default', 'purple', 'blue', 'gold'];
+let themeIndex = 0;
 
 // Get DOM elements
 const searchInput = document.getElementById('searchInput');
@@ -43,35 +48,25 @@ async function initializePopup() {
   }
 }
 
-// Ensure content script is loaded with retries
-async function ensureContentScriptLoaded(retryCount = 0) {
-  if (!currentTab?.id) return;
-
-  try {
-    // Try to send a test message to check if content script is loaded
-    await chrome.tabs.sendMessage(currentTab.id, { action: 'ping' });
-    contentScriptLoaded = true;
-  } catch (error) {
-    if (retryCount >= MAX_RETRIES) {
-      console.error('Failed to load content script after retries');
-      throw error;
-    }
-
-    // If content script is not loaded, inject it
-    console.log(`Content script not loaded, injecting... (attempt ${retryCount + 1})`);
-    await injectContentScript();
-    
-    // Wait a bit longer before retrying
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    // Retry the check
-    return ensureContentScriptLoaded(retryCount + 1);
+function cycleToNextTheme() {
+  // Remove current theme class
+  document.body.classList.remove(`theme-${currentTheme}`);
+  
+  // Update theme index
+  themeIndex = (themeIndex + 1) % THEMES.length;
+  currentTheme = THEMES[themeIndex];
+  
+  // Add new theme class if not default
+  if (currentTheme !== 'default') {
+    document.body.classList.add(`theme-${currentTheme}`);
   }
 }
 
 // Handle keydown events
 async function handleKeyDown(event) {
   if (event.key === 'Enter' && searchInput.value.trim()) {
+    event.preventDefault();
+    
     try {
       if (!contentScriptLoaded) {
         await ensureContentScriptLoaded();
@@ -79,35 +74,20 @@ async function handleKeyDown(event) {
 
       const searchValue = searchInput.value.trim();
       
-      // Clear the input immediately
-      searchInput.value = '';
-      
-      // Send search request with persist flag
-      const response = await chrome.tabs.sendMessage(currentTab.id, {
+      // Send search request with current theme
+      await chrome.tabs.sendMessage(currentTab.id, {
         action: 'search',
         query: searchValue,
+        theme: currentTheme,
         persist: true
       });
 
-      // Update UI with search results
-      if (response && typeof response.matchCount === 'number') {
-        updateButtons(response.matchCount);
-        if (response.matchCount > 0) {
-          searchStats.textContent = `${response.currentMatch} of ${response.matchCount}`;
-        } else {
-          searchStats.textContent = 'No matches';
-          // If no matches, restore the search value
-          searchInput.value = searchValue;
-        }
-      }
-      
-      // Ensure focus remains on input
+      // Clear input and cycle theme
+      searchInput.value = '';
+      cycleToNextTheme();
       searchInput.focus();
     } catch (error) {
       console.error('Error on Enter search:', error);
-      searchStats.textContent = 'Search error';
-      // Restore the search value on error
-      searchInput.value = searchValue;
     }
   }
 }
@@ -120,33 +100,21 @@ function handleSearch() {
 
   searchTimeout = window.setTimeout(async () => {
     const query = searchInput.value;
-    if (!currentTab?.id || !query) {
-      updateButtons(0);
-      searchStats.textContent = '';
-      return;
-    }
+    if (!currentTab?.id || !query) return;
 
     try {
       if (!contentScriptLoaded) {
         await ensureContentScriptLoaded();
       }
 
-      // Send search request without persist flag for live search
-      const response = await chrome.tabs.sendMessage(currentTab.id, {
+      // Send search request with current theme
+      await chrome.tabs.sendMessage(currentTab.id, {
         action: 'search',
         query: query,
+        theme: currentTheme,
         persist: false
       });
 
-      // Update UI with search results
-      if (response && typeof response.matchCount === 'number') {
-        updateButtons(response.matchCount);
-        if (response.matchCount > 0) {
-          searchStats.textContent = `${response.currentMatch} of ${response.matchCount}`;
-        } else {
-          searchStats.textContent = 'No matches';
-        }
-      }
     } catch (error) {
       console.error('Error searching:', error);
       contentScriptLoaded = false;
@@ -156,10 +124,9 @@ function handleSearch() {
         handleSearch();
       } catch (retryError) {
         console.error('Failed to recover from search error:', retryError);
-        searchStats.textContent = 'Search error';
       }
     }
-  }, 300);
+  }, 150);
 }
 
 // Navigate between search results
@@ -186,11 +153,30 @@ async function navigateSearch(direction) {
   }
 }
 
-// Update button states
-function updateButtons(matchCount) {
-  const hasMatches = matchCount > 0;
-  prevButton.disabled = !hasMatches;
-  nextButton.disabled = !hasMatches;
+// Ensure content script is loaded with retries
+async function ensureContentScriptLoaded(retryCount = 0) {
+  if (!currentTab?.id) return;
+
+  try {
+    // Try to send a test message to check if content script is loaded
+    await chrome.tabs.sendMessage(currentTab.id, { action: 'ping' });
+    contentScriptLoaded = true;
+  } catch (error) {
+    if (retryCount >= MAX_RETRIES) {
+      console.error('Failed to load content script after retries');
+      throw error;
+    }
+
+    // If content script is not loaded, inject it
+    console.log(`Content script not loaded, injecting... (attempt ${retryCount + 1})`);
+    await injectContentScript();
+    
+    // Wait a bit longer before retrying
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Retry the check
+    return ensureContentScriptLoaded(retryCount + 1);
+  }
 }
 
 // Inject content script if not already loaded
