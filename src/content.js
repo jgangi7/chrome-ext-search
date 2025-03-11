@@ -219,8 +219,25 @@ class SearchManager {
       }
     });
     
-    // Update highlights array to only include current search highlights
-    this.highlights = Array.from(document.querySelectorAll('.chrome-ext-search-highlight'));
+    // Update highlights array to include all current search highlights
+    this.highlights = [];
+    
+    // Add persistent highlights to the array and ensure they have correct theme classes
+    this.persistentHighlights.forEach((highlights, query) => {
+      highlights.forEach(highlight => {
+        // Remove all theme classes first
+        highlight.classList.remove('theme-purple', 'theme-blue', 'theme-gold');
+        
+        // Add the stored theme class back if it exists
+        const storedTheme = highlight.dataset.theme;
+        if (storedTheme && storedTheme !== 'default') {
+          highlight.classList.add(`theme-${storedTheme}`);
+        }
+        
+        this.highlights.push(highlight);
+      });
+    });
+    
     this.currentHighlightIndex = -1;
   }
 }
