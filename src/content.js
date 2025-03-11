@@ -24,28 +24,31 @@ class SearchManager {
       console.log('Message received in content script:', request);
 
       switch (request.action) {
+        case 'ping':
+          sendResponse({ status: 'ok' });
+          break;
         case 'search':
-          this.handleSearch(request.query, sendResponse);
+          this.handleSearch(request.query).then(response => {
+            sendResponse(response);
+          });
           break;
         case 'navigate':
-          this.navigateSearch(request.direction, sendResponse);
+          this.navigateSearch(request.direction).then(response => {
+            sendResponse(response);
+          });
           break;
       }
 
       // Keep the message channel open for async response
       return true;
     });
-
-    // Notify that content script is loaded
-    chrome.runtime.sendMessage({ action: 'contentScriptLoaded' });
   }
 
-  handleSearch(query, sendResponse) {
+  async handleSearch(query) {
     this.clearHighlights();
     
     if (!query) {
-      sendResponse({ matchCount: 0, currentMatch: 0 });
-      return;
+      return { matchCount: 0, currentMatch: 0 };
     }
 
     const walker = document.createTreeWalker(
@@ -105,16 +108,15 @@ class SearchManager {
       this.updateHighlightStyles();
     }
 
-    sendResponse({
+    return {
       matchCount: this.highlights.length,
       currentMatch: this.highlights.length > 0 ? 1 : 0
-    });
+    };
   }
 
-  navigateSearch(direction, sendResponse) {
+  async navigateSearch(direction) {
     if (this.highlights.length === 0) {
-      sendResponse({ matchCount: 0, currentMatch: 0 });
-      return;
+      return { matchCount: 0, currentMatch: 0 };
     }
 
     // Update current index
@@ -128,10 +130,10 @@ class SearchManager {
     this.scrollToHighlight(this.highlights[this.currentHighlightIndex]);
     this.updateHighlightStyles();
 
-    sendResponse({
+    return {
       matchCount: this.highlights.length,
       currentMatch: this.currentHighlightIndex + 1
-    });
+    };
   }
 
   scrollToHighlight(element) {
@@ -165,4 +167,7 @@ class SearchManager {
 }
 
 // Initialize the search manager when the content script loads
-new SearchManager(); 
+const searchManager = new SearchManager();
+
+// Notify that content script is loaded
+chrome.runtime.sendMessage({ action: 'contentScriptLoaded' }); 

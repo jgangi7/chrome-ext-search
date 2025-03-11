@@ -1,5 +1,6 @@
 .chrome-ext-search-highlight {
-  background-color: #ffeb3b;
+  background-color: #9CB380;
+  color: white;
   border-radius: 2px;
   transition: background-color 0.2s ease;
 }
@@ -10,8 +11,8 @@
 }
 
 .chrome-ext-search-highlight-current {
-  background-color: #ffa000;
-  box-shadow: 0 0 0 2px rgba(255, 160, 0, 0.3);
+  background-color: #7d916a;
+  box-shadow: 0 0 0 2px rgba(156, 179, 128, 0.3);
 }
 
 .chrome-ext-search-container {

@@ -1,5 +1,7 @@
 let currentTab = null;
 let searchTimeout = null;
+let contentScriptLoaded = false;
+const MAX_RETRIES = 3;
 
 // Get DOM elements
 const searchInput = document.getElementById('searchInput');
@@ -23,6 +25,9 @@ async function initializePopup() {
       return;
     }
 
+    // Try to inject content script first
+    await ensureContentScriptLoaded();
+
     // Setup event listeners
     searchInput.addEventListener('input', handleSearch);
     prevButton.addEventListener('click', () => navigateSearch('prev'));
@@ -32,6 +37,34 @@ async function initializePopup() {
     searchInput.focus();
   } catch (error) {
     console.error('Error initializing popup:', error);
+    searchInput.disabled = true;
+    searchInput.placeholder = 'Error initializing search';
+  }
+}
+
+// Ensure content script is loaded with retries
+async function ensureContentScriptLoaded(retryCount = 0) {
+  if (!currentTab?.id) return;
+
+  try {
+    // Try to send a test message to check if content script is loaded
+    await chrome.tabs.sendMessage(currentTab.id, { action: 'ping' });
+    contentScriptLoaded = true;
+  } catch (error) {
+    if (retryCount >= MAX_RETRIES) {
+      console.error('Failed to load content script after retries');
+      throw error;
+    }
+
+    // If content script is not loaded, inject it
+    console.log(`Content script not loaded, injecting... (attempt ${retryCount + 1})`);
+    await injectContentScript();
+    
+    // Wait a bit longer before retrying
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Retry the check
+    return ensureContentScriptLoaded(retryCount + 1);
   }
 }
 
@@ -45,10 +78,15 @@ function handleSearch() {
     const query = searchInput.value;
     if (!currentTab?.id || !query) {
       updateButtons(0);
+      searchStats.textContent = '';
       return;
     }
 
     try {
+      if (!contentScriptLoaded) {
+        await ensureContentScriptLoaded();
+      }
+
       // Send search request to content script
       const response = await chrome.tabs.sendMessage(currentTab.id, {
         action: 'search',
@@ -66,10 +104,15 @@ function handleSearch() {
       }
     } catch (error) {
       console.error('Error searching:', error);
-      // Inject content script if it's not loaded
-      await injectContentScript();
-      // Retry search
-      handleSearch();
+      contentScriptLoaded = false;
+      try {
+        await ensureContentScriptLoaded();
+        // Retry search
+        handleSearch();
+      } catch (retryError) {
+        console.error('Failed to recover from search error:', retryError);
+        searchStats.textContent = 'Search error';
+      }
     }
   }, 300);
 }
@@ -79,6 +122,10 @@ async function navigateSearch(direction) {
   if (!currentTab?.id) return;
 
   try {
+    if (!contentScriptLoaded) {
+      await ensureContentScriptLoaded();
+    }
+
     const response = await chrome.tabs.sendMessage(currentTab.id, {
       action: 'navigate',
       direction: direction
@@ -89,6 +136,8 @@ async function navigateSearch(direction) {
     }
   } catch (error) {
     console.error('Error navigating:', error);
+    contentScriptLoaded = false;
+    searchStats.textContent = 'Navigation error';
   }
 }
 
@@ -115,9 +164,10 @@ async function injectContentScript() {
     });
 
     // Wait for script to initialize
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 200));
   } catch (error) {
     console.error('Error injecting content script:', error);
+    throw error;
   }
 }
 
