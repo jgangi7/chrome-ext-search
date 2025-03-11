@@ -77,10 +77,15 @@ async function handleKeyDown(event) {
         await ensureContentScriptLoaded();
       }
 
+      const searchValue = searchInput.value.trim();
+      
+      // Clear the input immediately
+      searchInput.value = '';
+      
       // Send search request with persist flag
       const response = await chrome.tabs.sendMessage(currentTab.id, {
         action: 'search',
-        query: searchInput.value,
+        query: searchValue,
         persist: true
       });
 
@@ -91,11 +96,18 @@ async function handleKeyDown(event) {
           searchStats.textContent = `${response.currentMatch} of ${response.matchCount}`;
         } else {
           searchStats.textContent = 'No matches';
+          // If no matches, restore the search value
+          searchInput.value = searchValue;
         }
       }
+      
+      // Ensure focus remains on input
+      searchInput.focus();
     } catch (error) {
       console.error('Error on Enter search:', error);
       searchStats.textContent = 'Search error';
+      // Restore the search value on error
+      searchInput.value = searchValue;
     }
   }
 }
