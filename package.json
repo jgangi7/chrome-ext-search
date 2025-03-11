@@ -1,17 +1,20 @@
 {
-  "name": "my-chrome-extension",
+  "name": "chrome-ext-search",
   "version": "1.0.0",
-  "description": "Chrome Extension with TypeScript",
+  "description": "Chrome extension for enhanced page search",
+  "main": "background.js",
   "scripts": {
-    "build": "tsc && webpack --config webpack.config.js",
-    "watch": "webpack --config webpack.config.js --watch"
+    "build": "node build.js",
+    "watch": "nodemon --watch src --watch manifest.json --watch popup.html --ext js,css,html,json --exec \"npm run build\""
   },
+  "keywords": [
+    "chrome",
+    "extension",
+    "search"
+  ],
+  "author": "",
+  "license": "ISC",
   "devDependencies": {
-    "@types/chrome": "^0.0.254",
-    "copy-webpack-plugin": "^12.0.2",
-    "ts-loader": "^9.5.1",
-    "typescript": "^5.3.3",
-    "webpack": "^5.90.1",
-    "webpack-cli": "^5.1.4"
+    "nodemon": "^2.0.22"
   }
 } 

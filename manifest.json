@@ -2,8 +2,19 @@
   "manifest_version": 3,
   "name": "My Chrome Extension",
   "version": "1.0.0",
-  "description": "A Chrome Extension built with TypeScript, allowing search for a word in the current page multiple times!",
-  "permissions": ["storage", "activeTab"],
+  "description": "A Chrome Extension built with JavaScript, allowing search for a word in the current page multiple times!",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "commands"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "background": {
     "service_worker": "background.js"
   },
@@ -18,12 +29,22 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "css": ["content.css"]
     }
   ],
   "icons": {
     "16": "icon.png",
     "48": "icon.png",
     "128": "icon.png"
+  },
+  "commands": {
+    "activate-search": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+F",
+        "mac": "Command+Shift+F"
+      },
+      "description": "Activate dual search"
+    }
   }
 } 

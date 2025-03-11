@@ -1,13 +1,11 @@
-/// <reference types="chrome"/>
-
-let currentTab: chrome.tabs.Tab | null = null;
-let searchTimeout: number | null = null;
+let currentTab = null;
+let searchTimeout = null;
 
 // Get DOM elements
-const searchInput = document.getElementById('searchInput') as HTMLInputElement;
-const prevButton = document.getElementById('prevButton') as HTMLButtonElement;
-const nextButton = document.getElementById('nextButton') as HTMLButtonElement;
-const searchStats = document.getElementById('searchStats') as HTMLDivElement;
+const searchInput = document.getElementById('searchInput');
+const prevButton = document.getElementById('prevButton');
+const nextButton = document.getElementById('nextButton');
+const searchStats = document.getElementById('searchStats');
 
 // Initialize popup
 async function initializePopup() {
@@ -77,7 +75,7 @@ function handleSearch() {
 }
 
 // Navigate between search results
-async function navigateSearch(direction: 'prev' | 'next') {
+async function navigateSearch(direction) {
   if (!currentTab?.id) return;
 
   try {
@@ -95,7 +93,7 @@ async function navigateSearch(direction: 'prev' | 'next') {
 }
 
 // Update button states
-function updateButtons(matchCount: number) {
+function updateButtons(matchCount) {
   const hasMatches = matchCount > 0;
   prevButton.disabled = !hasMatches;
   nextButton.disabled = !hasMatches;
