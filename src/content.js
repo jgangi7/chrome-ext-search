@@ -17,6 +17,7 @@ class SearchManager {
     this.highlights = [];
     this.persistentHighlights = new Map(); // Map to store persistent highlights by query
     this.currentHighlightIndex = -1;
+    this.currentTheme = 'default';
     this.setupMessageListener();
   }
 
@@ -29,7 +30,7 @@ class SearchManager {
           sendResponse({ status: 'ok' });
           break;
         case 'search':
-          this.handleSearch(request.query, request.persist).then(response => {
+          this.handleSearch(request.query, request.persist, request.theme).then(response => {
             // Only log search when persist flag is true (Enter key pressed)
             if (request.persist) {
               this.logSearch(request.query, response.matchCount);
@@ -69,13 +70,16 @@ class SearchManager {
     }
   }
 
-  async handleSearch(query, persist = false) {
+  async handleSearch(query, persist = false, theme = 'default') {
     // Clear temporary highlights but keep persistent ones
     this.clearTemporaryHighlights();
     
     if (!query) {
       return { matchCount: 0, currentMatch: 0 };
     }
+
+    // Update current theme
+    this.currentTheme = theme;
 
     const walker = document.createTreeWalker(
       document.body,
@@ -117,11 +121,13 @@ class SearchManager {
           
           if (i < parts.length - 1) {
             const highlight = document.createElement('span');
+            const themeClass = theme !== 'default' ? ` theme-${theme}` : '';
             highlight.className = persist ? 
-              'chrome-ext-search-highlight chrome-ext-search-persistent' : 
-              'chrome-ext-search-highlight';
+              `chrome-ext-search-highlight chrome-ext-search-persistent${themeClass}` : 
+              `chrome-ext-search-highlight${themeClass}`;
             highlight.textContent = matches[i];
             highlight.dataset.query = query; // Store query for reference
+            highlight.dataset.theme = theme; // Store theme for reference
             fragment.appendChild(highlight);
             newHighlights.push(highlight);
           }
@@ -183,6 +189,9 @@ class SearchManager {
     this.highlights.forEach((highlight, index) => {
       if (index === this.currentHighlightIndex) {
         highlight.classList.add('chrome-ext-search-highlight-current');
+        if (this.currentTheme !== 'default') {
+          highlight.classList.add(`theme-${this.currentTheme}`);
+        }
       } else {
         highlight.classList.remove('chrome-ext-search-highlight-current');
       }
