@@ -15,8 +15,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 class SearchManager {
   constructor() {
     this.highlights = [];
-    this.persistentHighlights = new Map(); // Map to store persistent highlights by query
+    this.persistentHighlights = new Map();
     this.currentHighlightIndex = -1;
+    this.currentTheme = 'default'; // default, purple, blue, or gold
     this.setupMessageListener();
   }
 
@@ -29,8 +30,7 @@ class SearchManager {
           sendResponse({ status: 'ok' });
           break;
         case 'search':
-          this.handleSearch(request.query, request.persist).then(response => {
-            // Only log search when persist flag is true (Enter key pressed)
+          this.handleSearch(request.query, request.persist, request.theme).then(response => {
             if (request.persist) {
               this.logSearch(request.query, response.matchCount);
             }
@@ -42,11 +42,48 @@ class SearchManager {
             sendResponse(response);
           });
           break;
+        case 'setTheme':
+          this.currentTheme = request.theme || 'default';
+          sendResponse({ status: 'theme_updated' });
+          break;
       }
 
-      // Keep the message channel open for async response
       return true;
     });
+  }
+
+  getThemeClasses(persist = false) {
+    const themeMap = {
+      default: {
+        highlight: 'chrome-ext-search-highlight',
+        current: 'chrome-ext-search-highlight-current',
+        persistent: 'chrome-ext-search-persistent'
+      },
+      purple: {
+        highlight: 'chrome-ext-search-highlight-purple',
+        current: 'chrome-ext-search-highlight-purple-current',
+        persistent: 'chrome-ext-search-persistent-purple'
+      },
+      blue: {
+        highlight: 'chrome-ext-search-highlight-blue',
+        current: 'chrome-ext-search-highlight-blue-current',
+        persistent: 'chrome-ext-search-persistent-blue'
+      },
+      gold: {
+        highlight: 'chrome-ext-search-highlight-gold',
+        current: 'chrome-ext-search-highlight-gold-current',
+        persistent: 'chrome-ext-search-persistent-gold'
+      }
+    };
+
+    const theme = themeMap[this.currentTheme] || themeMap.default;
+    const classes = [theme.highlight];
+    
+    if (persist) {
+      classes.push(theme.persistent);
+    }
+
+    return classes.join(' ');
   }
 
   async logSearch(query, matchCount) {
@@ -69,8 +106,11 @@ class SearchManager {
     }
   }
 
-  async handleSearch(query, persist = false) {
-    // Clear temporary highlights but keep persistent ones
+  async handleSearch(query, persist = false, theme = null) {
+    if (theme) {
+      this.currentTheme = theme;
+    }
+    
     this.clearTemporaryHighlights();
     
     if (!query) {
@@ -87,7 +127,7 @@ class SearchManager {
               parent.tagName === 'STYLE' || 
               parent.tagName === 'INPUT' || 
               parent.tagName === 'TEXTAREA' ||
-              parent.matches('.chrome-ext-search-highlight')) {
+              parent.matches('[class*="chrome-ext-search-highlight"]')) {
             return NodeFilter.FILTER_REJECT;
           }
           return NodeFilter.FILTER_ACCEPT;
@@ -117,11 +157,10 @@ class SearchManager {
           
           if (i < parts.length - 1) {
             const highlight = document.createElement('span');
-            highlight.className = persist ? 
-              'chrome-ext-search-highlight chrome-ext-search-persistent' : 
-              'chrome-ext-search-highlight';
+            highlight.className = this.getThemeClasses(persist);
             highlight.textContent = matches[i];
-            highlight.dataset.query = query; // Store query for reference
+            highlight.dataset.query = query;
+            highlight.dataset.theme = this.currentTheme;
             fragment.appendChild(highlight);
             newHighlights.push(highlight);
           }
@@ -131,13 +170,11 @@ class SearchManager {
       }
     });
 
-    // Store highlights based on persistence
     if (persist) {
       this.persistentHighlights.set(query, newHighlights);
     }
     this.highlights = newHighlights;
 
-    // Set initial highlight
     if (this.highlights.length > 0) {
       this.currentHighlightIndex = 0;
       this.scrollToHighlight(this.highlights[0]);
@@ -180,18 +217,20 @@ class SearchManager {
   }
 
   updateHighlightStyles() {
+    const theme = this.currentTheme;
+    const currentClass = `chrome-ext-search-highlight-${theme === 'default' ? '' : theme + '-'}current`;
+    
     this.highlights.forEach((highlight, index) => {
       if (index === this.currentHighlightIndex) {
-        highlight.classList.add('chrome-ext-search-highlight-current');
+        highlight.classList.add(currentClass);
       } else {
-        highlight.classList.remove('chrome-ext-search-highlight-current');
+        highlight.classList.remove(currentClass);
       }
     });
   }
 
   clearTemporaryHighlights() {
-    // Only clear highlights that aren't persistent
-    const highlightsToRemove = document.querySelectorAll('.chrome-ext-search-highlight:not(.chrome-ext-search-persistent)');
+    const highlightsToRemove = document.querySelectorAll('[class*="chrome-ext-search-highlight"]:not([class*="persistent"])');
     highlightsToRemove.forEach(highlight => {
       const parent = highlight.parentNode;
       if (parent) {
@@ -200,8 +239,7 @@ class SearchManager {
       }
     });
     
-    // Update highlights array to only include current search highlights
-    this.highlights = Array.from(document.querySelectorAll('.chrome-ext-search-highlight'));
+    this.highlights = Array.from(document.querySelectorAll('[class*="chrome-ext-search-highlight"]'));
     this.currentHighlightIndex = -1;
   }
 }
