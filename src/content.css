@@ -1,8 +1,8 @@
 .chrome-ext-search-highlight {
-  background-color: #9CB380;
-  color: white;
+  background-color: rgba(156, 179, 128, 0.3);  /* #9CB380 with transparency */
   border-radius: 2px;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid #9CB380;
 }
 
 .chrome-ext-search-highlight-2 {
@@ -11,8 +11,9 @@
 }
 
 .chrome-ext-search-highlight-current {
-  background-color: #ffa000;
-  box-shadow: 0 0 4px rgba(255, 160, 0, 0.5);
+  background-color: #9CB380;
+  border-bottom: 2px solid #7a8f64;
+  box-shadow: 0 0 4px rgba(156, 179, 128, 0.5);
 }
 
 .chrome-ext-search-container {
@@ -38,8 +39,8 @@
 }
 
 .chrome-ext-search-input:focus {
-  border-color: #4285f4;
-  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+  border-color: #9CB380;
+  box-shadow: 0 0 0 2px rgba(156, 179, 128, 0.2);
 } 
 
 body {
@@ -73,12 +74,12 @@ button:hover {
 }
 
 .chrome-ext-search-persistent {
+  background-color: rgba(156, 179, 128, 0.2);
   border-bottom: 2px solid #9CB380;
-  background-color: rgba(156, 179, 128, 0.3);
 }
 
 .chrome-ext-search-persistent.chrome-ext-search-highlight-current {
-  background-color: rgba(156, 179, 128, 0.6);
+  background-color: #9CB380;
   border-bottom: 2px solid #7a8f64;
   box-shadow: 0 0 4px rgba(156, 179, 128, 0.5);
 }

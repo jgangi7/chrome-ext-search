@@ -35,6 +35,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true;
 });
 
+// Handle storing search logs
+async function handleSearchLog(searchLog) {
+  try {
+    // Get existing logs
+    const result = await chrome.storage.local.get('searchLogs');
+    let searchLogs = result.searchLogs || [];
+
+    // Check if this query already exists
+    const existingIndex = searchLogs.findIndex(log => log.query === searchLog.query);
+    
+    if (existingIndex !== -1) {
+      // Remove the existing entry
+      searchLogs.splice(existingIndex, 1);
+    }
+
+    // Add new log at the beginning
+    searchLogs.unshift(searchLog);
+
+    // Keep only the 4 most recent searches
+    searchLogs = searchLogs.slice(0, 4);
+
+    // Store updated logs
+    await chrome.storage.local.set({ searchLogs });
+    console.log('Search logged (limited to 4):', searchLogs);
+  } catch (error) {
+    console.error('Error storing search log:', error);
+  }
+}
+
 // Check if URL is restricted
 function isRestrictedUrl(url) {
   return url.startsWith('chrome://') || 
@@ -113,28 +142,5 @@ async function handleActivateSearch() {
     }
   } catch (error) {
     console.error('Error in activate-search command:', error);
-  }
-}
-
-// Handle storing search logs
-async function handleSearchLog(searchLog) {
-  try {
-    // Get existing logs
-    const result = await chrome.storage.local.get('searchLogs');
-    const searchLogs = result.searchLogs || [];
-
-    // Add new log
-    searchLogs.push(searchLog);
-
-    // Keep only the last 1000 searches
-    if (searchLogs.length > 1000) {
-      searchLogs.shift();
-    }
-
-    // Store updated logs
-    await chrome.storage.local.set({ searchLogs });
-    console.log('Search logged:', searchLog);
-  } catch (error) {
-    console.error('Error storing search log:', error);
   }
 } 
