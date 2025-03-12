@@ -19,7 +19,7 @@
     .search-input {
       width: 250px;
       height: 24px;
-      padding: 2px 4px;
+      padding: 2px 24px 2px 4px;
       background-color: #9CB380;
       color: black;
       border: none !important;
@@ -36,17 +36,66 @@
       color: rgba(0, 0, 0, 0.5);
     }
 
+    .history-icon {
+      position: absolute;
+      right: 4px;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 0.2s ease;
+    }
+
+    .history-icon:hover {
+      opacity: 1;
+    }
+
+    .history-list {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: inherit;
+      margin-top: 1px;
+      font-size: 12px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+
+    .history-list.visible {
+      display: block;
+    }
+
+    .history-item {
+      padding: 4px 8px;
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+    }
+
+    .history-item-color {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      opacity: 0.7;
+    }
+
     /* Theme variations */
     body.theme-purple,
-    body.theme-purple .search-input {
+    body.theme-purple .search-input,
+    body.theme-purple .history-list {
       background-color: #C45AB3;
     }
     body.theme-blue,
-    body.theme-blue .search-input {
+    body.theme-blue .search-input,
+    body.theme-blue .history-list {
       background-color: #5762D5;
     }
     body.theme-gold,
-    body.theme-gold .search-input {
+    body.theme-gold .search-input,
+    body.theme-gold .history-list {
       background-color: #DDA448;
     }
   </style>
@@ -54,6 +103,10 @@
 <body>
   <div class="search-container">
     <input type="text" id="searchInput" class="search-input" placeholder="Search in page..." autocomplete="off" spellcheck="false">
+    <svg class="history-icon" id="historyIcon" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.25 2.52.77-1.28-3.52-2.09V8z"/>
+    </svg>
+    <div id="historyList" class="history-list"></div>
   </div>
   <script src="popup.js"></script>
 </body>

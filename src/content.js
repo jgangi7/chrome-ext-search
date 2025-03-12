@@ -17,6 +17,7 @@ class SearchManager {
     this.persistentHighlights = new Map(); // Map to store persistent highlights by query
     this.currentTheme = 'default';
     this.MAX_PERSISTENT_SEARCHES = 4;
+    this.searchTerms = []; // Array to store search terms and their themes
     this.setupMessageListener();
   }
 
@@ -33,11 +34,18 @@ class SearchManager {
             // Only log search when persist flag is true (Enter key pressed)
             if (request.persist) {
               this.logSearch(request.query, response.matchCount);
+              // Add to search terms if persistent
+              if (!response.searchLimitReached) {
+                this.searchTerms.push({ query: request.query, theme: request.theme });
+              }
             }
             // Add search limit info to response
             response.searchLimitReached = this.persistentHighlights.size >= this.MAX_PERSISTENT_SEARCHES;
             sendResponse(response);
           });
+          break;
+        case 'getSearchTerms':
+          sendResponse({ terms: this.searchTerms });
           break;
       }
 

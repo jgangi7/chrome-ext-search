@@ -4,12 +4,23 @@ let contentScriptLoaded = false;
 let currentTheme = 'default';
 const MAX_RETRIES = 3;
 
-// Theme sequence
+// Theme sequence and colors
 const THEMES = ['default', 'purple', 'blue', 'gold'];
+const THEME_COLORS = {
+  default: '#9CB380',
+  purple: '#C45AB3',
+  blue: '#5762D5',
+  gold: '#DDA448'
+};
 let themeIndex = 0;
+
+// Search history
+let searchHistory = [];
 
 // Get DOM elements
 const searchInput = document.getElementById('searchInput');
+const historyIcon = document.getElementById('historyIcon');
+const historyList = document.getElementById('historyList');
 
 // Initialize popup
 async function initializePopup() {
@@ -33,6 +44,18 @@ async function initializePopup() {
     // Setup event listeners
     searchInput.addEventListener('input', handleSearch);
     searchInput.addEventListener('keydown', handleKeyDown);
+    historyIcon.addEventListener('click', toggleHistoryList);
+    document.addEventListener('click', handleClickOutside);
+
+    // Get current search terms
+    const response = await chrome.tabs.sendMessage(currentTab.id, {
+      action: 'getSearchTerms'
+    });
+    
+    if (response && response.terms) {
+      searchHistory = response.terms;
+      updateHistoryList();
+    }
 
     // Focus the search input
     searchInput.focus();
@@ -41,6 +64,35 @@ async function initializePopup() {
     searchInput.disabled = true;
     searchInput.placeholder = 'Error initializing search';
   }
+}
+
+function toggleHistoryList() {
+  historyList.classList.toggle('visible');
+}
+
+function handleClickOutside(event) {
+  if (!historyList.contains(event.target) && event.target !== historyIcon) {
+    historyList.classList.remove('visible');
+  }
+}
+
+function updateHistoryList() {
+  historyList.innerHTML = '';
+  searchHistory.forEach((item, index) => {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    
+    const colorDot = document.createElement('span');
+    colorDot.className = 'history-item-color';
+    colorDot.style.backgroundColor = THEME_COLORS[item.theme];
+    
+    const text = document.createElement('span');
+    text.textContent = item.query;
+    
+    div.appendChild(colorDot);
+    div.appendChild(text);
+    historyList.appendChild(div);
+  });
 }
 
 function cycleToNextTheme() {
@@ -76,6 +128,12 @@ async function handleKeyDown(event) {
         theme: currentTheme,
         persist: true
       });
+
+      if (!response.searchLimitReached) {
+        // Add to search history
+        searchHistory.push({ query: searchValue, theme: currentTheme });
+        updateHistoryList();
+      }
 
       // Clear input and cycle theme
       searchInput.value = '';
