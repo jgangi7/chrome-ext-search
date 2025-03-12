@@ -3,13 +3,35 @@ let searchTimeout = null;
 let contentScriptLoaded = false;
 let currentTheme = 'default';
 const MAX_RETRIES = 3;
+const MAX_HISTORY = 4;
 
-// Theme sequence
+// Theme sequence and colors
 const THEMES = ['default', 'purple', 'blue', 'gold'];
+const THEME_COLORS = {
+  default: '#9CB380',
+  purple: '#C45AB3',
+  blue: '#5762D5',
+  gold: '#DDA448'
+};
 let themeIndex = 0;
+
+// Search history
+let searchHistory = [];
 
 // Get DOM elements
 const searchInput = document.getElementById('searchInput');
+const historyIcon = document.getElementById('historyIcon');
+const historyList = document.getElementById('historyList');
+
+function checkHistoryLimit() {
+  if (searchHistory.length >= MAX_HISTORY) {
+    document.body.classList.add('limit-reached');
+    searchInput.disabled = true;
+    searchInput.placeholder = 'Maximum of 4 search terms reached';
+    return true;
+  }
+  return false;
+}
 
 // Initialize popup
 async function initializePopup() {
@@ -33,9 +55,24 @@ async function initializePopup() {
     // Setup event listeners
     searchInput.addEventListener('input', handleSearch);
     searchInput.addEventListener('keydown', handleKeyDown);
+    historyIcon.addEventListener('click', toggleHistoryList);
+    document.addEventListener('click', handleClickOutside);
 
-    // Focus the search input
-    searchInput.focus();
+    // Get current search terms
+    const response = await chrome.tabs.sendMessage(currentTab.id, {
+      action: 'getSearchTerms'
+    });
+    
+    if (response && response.terms) {
+      searchHistory = response.terms;
+      updateHistoryList();
+      checkHistoryLimit();
+    }
+
+    // Focus the search input if not disabled
+    if (!searchInput.disabled) {
+      searchInput.focus();
+    }
   } catch (error) {
     console.error('Error initializing popup:', error);
     searchInput.disabled = true;
@@ -43,7 +80,41 @@ async function initializePopup() {
   }
 }
 
+function toggleHistoryList() {
+  historyList.classList.toggle('visible');
+}
+
+function handleClickOutside(event) {
+  if (!historyList.contains(event.target) && event.target !== historyIcon) {
+    historyList.classList.remove('visible');
+  }
+}
+
+function updateHistoryList() {
+  historyList.innerHTML = '';
+  searchHistory.forEach((item, index) => {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    
+    const colorDot = document.createElement('span');
+    colorDot.className = 'history-item-color';
+    colorDot.style.backgroundColor = THEME_COLORS[item.theme];
+    
+    const text = document.createElement('span');
+    text.textContent = item.query;
+    
+    div.appendChild(colorDot);
+    div.appendChild(text);
+    historyList.appendChild(div);
+  });
+}
+
 function cycleToNextTheme() {
+  if (searchHistory.length >= MAX_HISTORY) {
+    document.body.classList.add('limit-reached');
+    return;
+  }
+
   // Remove current theme class
   document.body.classList.remove(`theme-${currentTheme}`);
   
@@ -77,14 +148,19 @@ async function handleKeyDown(event) {
         persist: true
       });
 
+      if (!response.searchLimitReached) {
+        // Add to search history
+        searchHistory.push({ query: searchValue, theme: currentTheme });
+        updateHistoryList();
+      }
+
       // Clear input and cycle theme
       searchInput.value = '';
       cycleToNextTheme();
       
-      // If search limit is reached, disable the input
-      if (response.searchLimitReached) {
-        searchInput.disabled = true;
-        searchInput.placeholder = 'Maximum of 4 search terms reached';
+      // Check if we've reached the limit
+      if (checkHistoryLimit()) {
+        document.body.classList.add('limit-reached');
       } else {
         searchInput.focus();
       }
@@ -117,10 +193,9 @@ function handleSearch() {
         persist: false
       });
 
-      // If search limit is reached, disable the input
+      // Check if we've reached the limit
       if (response.searchLimitReached) {
-        searchInput.disabled = true;
-        searchInput.placeholder = 'Maximum of 4 search terms reached';
+        checkHistoryLimit();
       }
     } catch (error) {
       console.error('Error searching:', error);
