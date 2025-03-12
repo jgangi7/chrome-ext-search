@@ -14,9 +14,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 class SearchManager {
   constructor() {
-    this.highlights = [];
     this.persistentHighlights = new Map(); // Map to store persistent highlights by query
-    this.currentHighlightIndex = -1;
+    this.currentTheme = 'default';
+    this.MAX_PERSISTENT_SEARCHES = 4;
     this.setupMessageListener();
   }
 
@@ -29,16 +29,13 @@ class SearchManager {
           sendResponse({ status: 'ok' });
           break;
         case 'search':
-          this.handleSearch(request.query, request.persist).then(response => {
+          this.handleSearch(request.query, request.persist, request.theme).then(response => {
             // Only log search when persist flag is true (Enter key pressed)
             if (request.persist) {
               this.logSearch(request.query, response.matchCount);
             }
-            sendResponse(response);
-          });
-          break;
-        case 'navigate':
-          this.navigateSearch(request.direction).then(response => {
+            // Add search limit info to response
+            response.searchLimitReached = this.persistentHighlights.size >= this.MAX_PERSISTENT_SEARCHES;
             sendResponse(response);
           });
           break;
@@ -69,13 +66,27 @@ class SearchManager {
     }
   }
 
-  async handleSearch(query, persist = false) {
+  async handleSearch(query, persist = false, theme = 'default') {
+    // Check if we've reached the limit for persistent searches
+    if (persist && this.persistentHighlights.size >= this.MAX_PERSISTENT_SEARCHES) {
+      return {
+        matchCount: 0,
+        searchLimitReached: true
+      };
+    }
+
     // Clear temporary highlights but keep persistent ones
     this.clearTemporaryHighlights();
     
     if (!query) {
-      return { matchCount: 0, currentMatch: 0 };
+      return { 
+        matchCount: 0,
+        searchLimitReached: this.persistentHighlights.size >= this.MAX_PERSISTENT_SEARCHES
+      };
     }
+
+    // Update current theme
+    this.currentTheme = theme;
 
     const walker = document.createTreeWalker(
       document.body,
@@ -98,17 +109,18 @@ class SearchManager {
     const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
     const nodes = [];
     let node;
+    let matchCount = 0;
     
     while (node = walker.nextNode()) {
       nodes.push(node);
     }
 
-    const newHighlights = [];
     nodes.forEach(textNode => {
       const text = textNode.textContent || '';
       const matches = text.match(regex);
       
       if (matches) {
+        matchCount += matches.length;
         const parts = text.split(regex);
         const fragment = document.createDocumentFragment();
         
@@ -117,13 +129,14 @@ class SearchManager {
           
           if (i < parts.length - 1) {
             const highlight = document.createElement('span');
+            const themeClass = theme !== 'default' ? ` theme-${theme}` : '';
             highlight.className = persist ? 
-              'chrome-ext-search-highlight chrome-ext-search-persistent' : 
-              'chrome-ext-search-highlight';
+              `chrome-ext-search-highlight chrome-ext-search-persistent${themeClass}` : 
+              `chrome-ext-search-highlight${themeClass}`;
             highlight.textContent = matches[i];
             highlight.dataset.query = query; // Store query for reference
+            highlight.dataset.theme = theme; // Store theme for reference
             fragment.appendChild(highlight);
-            newHighlights.push(highlight);
           }
         });
         
@@ -133,60 +146,14 @@ class SearchManager {
 
     // Store highlights based on persistence
     if (persist) {
-      this.persistentHighlights.set(query, newHighlights);
-    }
-    this.highlights = newHighlights;
-
-    // Set initial highlight
-    if (this.highlights.length > 0) {
-      this.currentHighlightIndex = 0;
-      this.scrollToHighlight(this.highlights[0]);
-      this.updateHighlightStyles();
+      const highlights = document.querySelectorAll(`.chrome-ext-search-highlight[data-query="${query}"]`);
+      this.persistentHighlights.set(query, Array.from(highlights));
     }
 
     return {
-      matchCount: this.highlights.length,
-      currentMatch: this.highlights.length > 0 ? 1 : 0
+      matchCount,
+      searchLimitReached: this.persistentHighlights.size >= this.MAX_PERSISTENT_SEARCHES
     };
-  }
-
-  async navigateSearch(direction) {
-    if (this.highlights.length === 0) {
-      return { matchCount: 0, currentMatch: 0 };
-    }
-
-    // Update current index
-    if (direction === 'next') {
-      this.currentHighlightIndex = (this.currentHighlightIndex + 1) % this.highlights.length;
-    } else {
-      this.currentHighlightIndex = (this.currentHighlightIndex - 1 + this.highlights.length) % this.highlights.length;
-    }
-
-    // Scroll to the current highlight
-    this.scrollToHighlight(this.highlights[this.currentHighlightIndex]);
-    this.updateHighlightStyles();
-
-    return {
-      matchCount: this.highlights.length,
-      currentMatch: this.currentHighlightIndex + 1
-    };
-  }
-
-  scrollToHighlight(element) {
-    element.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center'
-    });
-  }
-
-  updateHighlightStyles() {
-    this.highlights.forEach((highlight, index) => {
-      if (index === this.currentHighlightIndex) {
-        highlight.classList.add('chrome-ext-search-highlight-current');
-      } else {
-        highlight.classList.remove('chrome-ext-search-highlight-current');
-      }
-    });
   }
 
   clearTemporaryHighlights() {
@@ -199,10 +166,6 @@ class SearchManager {
         parent.normalize();
       }
     });
-    
-    // Update highlights array to only include current search highlights
-    this.highlights = Array.from(document.querySelectorAll('.chrome-ext-search-highlight'));
-    this.currentHighlightIndex = -1;
   }
 }
 

@@ -5,6 +5,21 @@
   border-bottom: 2px solid #9CB380;
 }
 
+.chrome-ext-search-highlight.theme-purple {
+  background-color: rgba(196, 90, 179, 0.3);  /* #C45AB3 with transparency */
+  border-bottom: 2px solid #C45AB3;
+}
+
+.chrome-ext-search-highlight.theme-blue {
+  background-color: rgba(87, 98, 213, 0.3);  /* #5762D5 with transparency */
+  border-bottom: 2px solid #5762D5;
+}
+
+.chrome-ext-search-highlight.theme-gold {
+  background-color: rgba(221, 164, 72, 0.3);  /* #DDA448 with transparency */
+  border-bottom: 2px solid #DDA448;
+}
+
 .chrome-ext-search-highlight-2 {
   background-color: #90EE90;  /* light green */
   border-radius: 2px;
@@ -14,6 +29,24 @@
   background-color: #9CB380;
   border-bottom: 2px solid #7a8f64;
   box-shadow: 0 0 4px rgba(156, 179, 128, 0.5);
+}
+
+.chrome-ext-search-highlight-current.theme-purple {
+  background-color: #C45AB3;
+  border-bottom: 2px solid #9c4890;
+  box-shadow: 0 0 4px rgba(196, 90, 179, 0.5);
+}
+
+.chrome-ext-search-highlight-current.theme-blue {
+  background-color: #5762D5;
+  border-bottom: 2px solid #454ea8;
+  box-shadow: 0 0 4px rgba(87, 98, 213, 0.5);
+}
+
+.chrome-ext-search-highlight-current.theme-gold {
+  background-color: #DDA448;
+  border-bottom: 2px solid #b18339;
+  box-shadow: 0 0 4px rgba(221, 164, 72, 0.5);
 }
 
 .chrome-ext-search-container {

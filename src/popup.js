@@ -1,13 +1,15 @@
 let currentTab = null;
 let searchTimeout = null;
 let contentScriptLoaded = false;
+let currentTheme = 'default';
 const MAX_RETRIES = 3;
+
+// Theme sequence
+const THEMES = ['default', 'purple', 'blue', 'gold'];
+let themeIndex = 0;
 
 // Get DOM elements
 const searchInput = document.getElementById('searchInput');
-const prevButton = document.getElementById('prevButton');
-const nextButton = document.getElementById('nextButton');
-const searchStats = document.getElementById('searchStats');
 
 // Initialize popup
 async function initializePopup() {
@@ -31,8 +33,6 @@ async function initializePopup() {
     // Setup event listeners
     searchInput.addEventListener('input', handleSearch);
     searchInput.addEventListener('keydown', handleKeyDown);
-    prevButton.addEventListener('click', () => navigateSearch('prev'));
-    nextButton.addEventListener('click', () => navigateSearch('next'));
 
     // Focus the search input
     searchInput.focus();
@@ -41,6 +41,99 @@ async function initializePopup() {
     searchInput.disabled = true;
     searchInput.placeholder = 'Error initializing search';
   }
+}
+
+function cycleToNextTheme() {
+  // Remove current theme class
+  document.body.classList.remove(`theme-${currentTheme}`);
+  
+  // Update theme index
+  themeIndex = (themeIndex + 1) % THEMES.length;
+  currentTheme = THEMES[themeIndex];
+  
+  // Add new theme class if not default
+  if (currentTheme !== 'default') {
+    document.body.classList.add(`theme-${currentTheme}`);
+  }
+}
+
+// Handle keydown events
+async function handleKeyDown(event) {
+  if (event.key === 'Enter' && searchInput.value.trim()) {
+    event.preventDefault();
+    
+    try {
+      if (!contentScriptLoaded) {
+        await ensureContentScriptLoaded();
+      }
+
+      const searchValue = searchInput.value.trim();
+      
+      // Send search request with current theme
+      const response = await chrome.tabs.sendMessage(currentTab.id, {
+        action: 'search',
+        query: searchValue,
+        theme: currentTheme,
+        persist: true
+      });
+
+      // Clear input and cycle theme
+      searchInput.value = '';
+      cycleToNextTheme();
+      
+      // If search limit is reached, disable the input
+      if (response.searchLimitReached) {
+        searchInput.disabled = true;
+        searchInput.placeholder = 'Maximum of 4 search terms reached';
+      } else {
+        searchInput.focus();
+      }
+    } catch (error) {
+      console.error('Error on Enter search:', error);
+    }
+  }
+}
+
+// Handle search input
+function handleSearch() {
+  if (searchTimeout) {
+    window.clearTimeout(searchTimeout);
+  }
+
+  searchTimeout = window.setTimeout(async () => {
+    const query = searchInput.value;
+    if (!currentTab?.id || !query) return;
+
+    try {
+      if (!contentScriptLoaded) {
+        await ensureContentScriptLoaded();
+      }
+
+      // Send search request with current theme
+      const response = await chrome.tabs.sendMessage(currentTab.id, {
+        action: 'search',
+        query: query,
+        theme: currentTheme,
+        persist: false
+      });
+
+      // If search limit is reached, disable the input
+      if (response.searchLimitReached) {
+        searchInput.disabled = true;
+        searchInput.placeholder = 'Maximum of 4 search terms reached';
+      }
+    } catch (error) {
+      console.error('Error searching:', error);
+      contentScriptLoaded = false;
+      try {
+        await ensureContentScriptLoaded();
+        // Retry search
+        handleSearch();
+      } catch (retryError) {
+        console.error('Failed to recover from search error:', retryError);
+      }
+    }
+  }, 150);
 }
 
 // Ensure content script is loaded with retries
@@ -67,130 +160,6 @@ async function ensureContentScriptLoaded(retryCount = 0) {
     // Retry the check
     return ensureContentScriptLoaded(retryCount + 1);
   }
-}
-
-// Handle keydown events
-async function handleKeyDown(event) {
-  if (event.key === 'Enter' && searchInput.value.trim()) {
-    try {
-      if (!contentScriptLoaded) {
-        await ensureContentScriptLoaded();
-      }
-
-      const searchValue = searchInput.value.trim();
-      
-      // Clear the input immediately
-      searchInput.value = '';
-      
-      // Send search request with persist flag
-      const response = await chrome.tabs.sendMessage(currentTab.id, {
-        action: 'search',
-        query: searchValue,
-        persist: true
-      });
-
-      // Update UI with search results
-      if (response && typeof response.matchCount === 'number') {
-        updateButtons(response.matchCount);
-        if (response.matchCount > 0) {
-          searchStats.textContent = `${response.currentMatch} of ${response.matchCount}`;
-        } else {
-          searchStats.textContent = 'No matches';
-          // If no matches, restore the search value
-          searchInput.value = searchValue;
-        }
-      }
-      
-      // Ensure focus remains on input
-      searchInput.focus();
-    } catch (error) {
-      console.error('Error on Enter search:', error);
-      searchStats.textContent = 'Search error';
-      // Restore the search value on error
-      searchInput.value = searchValue;
-    }
-  }
-}
-
-// Handle search input
-function handleSearch() {
-  if (searchTimeout) {
-    window.clearTimeout(searchTimeout);
-  }
-
-  searchTimeout = window.setTimeout(async () => {
-    const query = searchInput.value;
-    if (!currentTab?.id || !query) {
-      updateButtons(0);
-      searchStats.textContent = '';
-      return;
-    }
-
-    try {
-      if (!contentScriptLoaded) {
-        await ensureContentScriptLoaded();
-      }
-
-      // Send search request without persist flag for live search
-      const response = await chrome.tabs.sendMessage(currentTab.id, {
-        action: 'search',
-        query: query,
-        persist: false
-      });
-
-      // Update UI with search results
-      if (response && typeof response.matchCount === 'number') {
-        updateButtons(response.matchCount);
-        if (response.matchCount > 0) {
-          searchStats.textContent = `${response.currentMatch} of ${response.matchCount}`;
-        } else {
-          searchStats.textContent = 'No matches';
-        }
-      }
-    } catch (error) {
-      console.error('Error searching:', error);
-      contentScriptLoaded = false;
-      try {
-        await ensureContentScriptLoaded();
-        // Retry search
-        handleSearch();
-      } catch (retryError) {
-        console.error('Failed to recover from search error:', retryError);
-        searchStats.textContent = 'Search error';
-      }
-    }
-  }, 300);
-}
-
-// Navigate between search results
-async function navigateSearch(direction) {
-  if (!currentTab?.id) return;
-
-  try {
-    if (!contentScriptLoaded) {
-      await ensureContentScriptLoaded();
-    }
-
-    const response = await chrome.tabs.sendMessage(currentTab.id, {
-      action: 'navigate',
-      direction: direction
-    });
-
-    if (response && typeof response.currentMatch === 'number') {
-      searchStats.textContent = `${response.currentMatch} of ${response.matchCount}`;
-    }
-  } catch (error) {
-    console.error('Error navigating:', error);
-    contentScriptLoaded = false;
-    searchStats.textContent = 'Navigation error';
-  }
-}
-
-// Update button states
-function updateButtons(matchCount) {
-  const hasMatches = matchCount > 0;
-  prevButton.disabled = !hasMatches;
-  nextButton.disabled = !hasMatches;
 }
 
 // Inject content script if not already loaded
