@@ -49,46 +49,11 @@
     body.theme-gold .search-input {
       background-color: #DDA448;
     }
-    .nav-buttons {
-      position: absolute;
-      right: 8px;
-      display: flex;
-      gap: 4px;
-    }
-    .nav-button {
-      padding: 4px 8px;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .nav-button:disabled {
-      color: rgba(255, 255, 255, 0.3);
-      cursor: not-allowed;
-    }
-    .nav-button:hover:not(:disabled) {
-      color: white;
-    }
-    .search-stats {
-      position: absolute;
-      right: 85px;
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.8);
-    }
   </style>
 </head>
 <body>
   <div class="search-container">
     <input type="text" id="searchInput" class="search-input" placeholder="Search in page..." autocomplete="off" spellcheck="false">
-    <div id="searchStats" class="search-stats"></div>
-    <div class="nav-buttons">
-      <button id="prevButton" class="nav-button" disabled>↑</button>
-      <button id="nextButton" class="nav-button" disabled>↓</button>
-    </div>
   </div>
   <script src="popup.js"></script>
 </body>

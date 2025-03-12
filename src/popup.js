@@ -10,9 +10,6 @@ let themeIndex = 0;
 
 // Get DOM elements
 const searchInput = document.getElementById('searchInput');
-const prevButton = document.getElementById('prevButton');
-const nextButton = document.getElementById('nextButton');
-const searchStats = document.getElementById('searchStats');
 
 // Initialize popup
 async function initializePopup() {
@@ -36,8 +33,6 @@ async function initializePopup() {
     // Setup event listeners
     searchInput.addEventListener('input', handleSearch);
     searchInput.addEventListener('keydown', handleKeyDown);
-    prevButton.addEventListener('click', () => navigateSearch('prev'));
-    nextButton.addEventListener('click', () => navigateSearch('next'));
 
     // Focus the search input
     searchInput.focus();
@@ -75,7 +70,7 @@ async function handleKeyDown(event) {
       const searchValue = searchInput.value.trim();
       
       // Send search request with current theme
-      await chrome.tabs.sendMessage(currentTab.id, {
+      const response = await chrome.tabs.sendMessage(currentTab.id, {
         action: 'search',
         query: searchValue,
         theme: currentTheme,
@@ -85,7 +80,14 @@ async function handleKeyDown(event) {
       // Clear input and cycle theme
       searchInput.value = '';
       cycleToNextTheme();
-      searchInput.focus();
+      
+      // If search limit is reached, disable the input
+      if (response.searchLimitReached) {
+        searchInput.disabled = true;
+        searchInput.placeholder = 'Maximum of 4 search terms reached';
+      } else {
+        searchInput.focus();
+      }
     } catch (error) {
       console.error('Error on Enter search:', error);
     }
@@ -108,13 +110,18 @@ function handleSearch() {
       }
 
       // Send search request with current theme
-      await chrome.tabs.sendMessage(currentTab.id, {
+      const response = await chrome.tabs.sendMessage(currentTab.id, {
         action: 'search',
         query: query,
         theme: currentTheme,
         persist: false
       });
 
+      // If search limit is reached, disable the input
+      if (response.searchLimitReached) {
+        searchInput.disabled = true;
+        searchInput.placeholder = 'Maximum of 4 search terms reached';
+      }
     } catch (error) {
       console.error('Error searching:', error);
       contentScriptLoaded = false;
@@ -127,30 +134,6 @@ function handleSearch() {
       }
     }
   }, 150);
-}
-
-// Navigate between search results
-async function navigateSearch(direction) {
-  if (!currentTab?.id) return;
-
-  try {
-    if (!contentScriptLoaded) {
-      await ensureContentScriptLoaded();
-    }
-
-    const response = await chrome.tabs.sendMessage(currentTab.id, {
-      action: 'navigate',
-      direction: direction
-    });
-
-    if (response && typeof response.currentMatch === 'number') {
-      searchStats.textContent = `${response.currentMatch} of ${response.matchCount}`;
-    }
-  } catch (error) {
-    console.error('Error navigating:', error);
-    contentScriptLoaded = false;
-    searchStats.textContent = 'Navigation error';
-  }
 }
 
 // Ensure content script is loaded with retries
