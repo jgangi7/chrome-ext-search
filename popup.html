@@ -36,6 +36,19 @@
       color: rgba(0, 0, 0, 0.5);
     }
 
+    .search-input:disabled {
+      background-color: white !important;
+      color: #666;
+    }
+
+    body.limit-reached {
+      background-color: white !important;
+    }
+
+    body.limit-reached .history-list {
+      background-color: white !important;
+    }
+
     .history-icon {
       position: absolute;
       right: 4px;
@@ -83,19 +96,19 @@
     }
 
     /* Theme variations */
-    body.theme-purple,
-    body.theme-purple .search-input,
-    body.theme-purple .history-list {
+    body.theme-purple:not(.limit-reached),
+    body.theme-purple:not(.limit-reached) .search-input:not(:disabled),
+    body.theme-purple:not(.limit-reached) .history-list {
       background-color: #C45AB3;
     }
-    body.theme-blue,
-    body.theme-blue .search-input,
-    body.theme-blue .history-list {
+    body.theme-blue:not(.limit-reached),
+    body.theme-blue:not(.limit-reached) .search-input:not(:disabled),
+    body.theme-blue:not(.limit-reached) .history-list {
       background-color: #5762D5;
     }
-    body.theme-gold,
-    body.theme-gold .search-input,
-    body.theme-gold .history-list {
+    body.theme-gold:not(.limit-reached),
+    body.theme-gold:not(.limit-reached) .search-input:not(:disabled),
+    body.theme-gold:not(.limit-reached) .history-list {
       background-color: #DDA448;
     }
   </style>

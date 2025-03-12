@@ -3,6 +3,7 @@ let searchTimeout = null;
 let contentScriptLoaded = false;
 let currentTheme = 'default';
 const MAX_RETRIES = 3;
+const MAX_HISTORY = 4;
 
 // Theme sequence and colors
 const THEMES = ['default', 'purple', 'blue', 'gold'];
@@ -21,6 +22,16 @@ let searchHistory = [];
 const searchInput = document.getElementById('searchInput');
 const historyIcon = document.getElementById('historyIcon');
 const historyList = document.getElementById('historyList');
+
+function checkHistoryLimit() {
+  if (searchHistory.length >= MAX_HISTORY) {
+    document.body.classList.add('limit-reached');
+    searchInput.disabled = true;
+    searchInput.placeholder = 'Maximum of 4 search terms reached';
+    return true;
+  }
+  return false;
+}
 
 // Initialize popup
 async function initializePopup() {
@@ -55,10 +66,13 @@ async function initializePopup() {
     if (response && response.terms) {
       searchHistory = response.terms;
       updateHistoryList();
+      checkHistoryLimit();
     }
 
-    // Focus the search input
-    searchInput.focus();
+    // Focus the search input if not disabled
+    if (!searchInput.disabled) {
+      searchInput.focus();
+    }
   } catch (error) {
     console.error('Error initializing popup:', error);
     searchInput.disabled = true;
@@ -96,6 +110,11 @@ function updateHistoryList() {
 }
 
 function cycleToNextTheme() {
+  if (searchHistory.length >= MAX_HISTORY) {
+    document.body.classList.add('limit-reached');
+    return;
+  }
+
   // Remove current theme class
   document.body.classList.remove(`theme-${currentTheme}`);
   
@@ -139,10 +158,9 @@ async function handleKeyDown(event) {
       searchInput.value = '';
       cycleToNextTheme();
       
-      // If search limit is reached, disable the input
-      if (response.searchLimitReached) {
-        searchInput.disabled = true;
-        searchInput.placeholder = 'Maximum of 4 search terms reached';
+      // Check if we've reached the limit
+      if (checkHistoryLimit()) {
+        document.body.classList.add('limit-reached');
       } else {
         searchInput.focus();
       }
@@ -175,10 +193,9 @@ function handleSearch() {
         persist: false
       });
 
-      // If search limit is reached, disable the input
+      // Check if we've reached the limit
       if (response.searchLimitReached) {
-        searchInput.disabled = true;
-        searchInput.placeholder = 'Maximum of 4 search terms reached';
+        checkHistoryLimit();
       }
     } catch (error) {
       console.error('Error searching:', error);
