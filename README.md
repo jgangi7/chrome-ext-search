@@ -65,35 +65,23 @@ chrome-ext-search/
 
 1. Search Enhancement:
    - Case-sensitive search option
-   - Regular expression support
-   - Word boundary matching
-   - Fuzzy search capabilities
 
 2. User Interface:
    - Customizable color themes
    - Adjustable maximum search terms
-   - Keyboard shortcuts for navigation
    - Search term statistics (count, position)
    - Dark mode support
 
 3. Functionality:
    - Navigate between highlights
-   - Export/import search configurations
-   - Save searches per domain
-   - Search across multiple tabs
    - Bookmark highlighted terms
+   - Integration with note-taking apps
 
 4. Performance:
    - Optimize highlight rendering for large documents
    - Cache search results
    - Batch DOM updates
    - Lazy loading for long pages
-
-5. Integration:
-   - Share highlights with other users
-   - Sync settings across devices
-   - Integration with note-taking apps
-   - Browser bookmark integration
 
 ## License
 
