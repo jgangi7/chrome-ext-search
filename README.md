@@ -15,18 +15,59 @@ A Chrome extension that allows you to search and highlight text on web pages wit
 - Real-time search highlighting as you type
 - Persistent highlights remain until removed
 
-## Installation
+## Getting Started
 
-1. Clone this repository:
+### Prerequisites
+- Google Chrome browser
+- Basic knowledge of using Chrome extensions
+
+### Installation Steps
+
+1. Download the extension:
    ```bash
    git clone https://github.com/yourusername/chrome-ext-search.git
    ```
+   Or download the ZIP file and extract it to a folder
 
-2. Open Chrome and navigate to `chrome://extensions/`
+2. Open Chrome and go to the Extensions page:
+   - Type `chrome://extensions` in the address bar, or
+   - Click the three dots menu → More Tools → Extensions
 
-3. Enable "Developer mode" in the top right corner
+3. Enable Developer Mode:
+   - Look for the "Developer mode" toggle in the top right corner
+   - Click it to turn it ON
 
-4. Click "Load unpacked" and select the directory containing the extension
+4. Load the extension:
+   - Click the "Load unpacked" button that appears
+   - Navigate to and select the folder containing the extension files
+   - Make sure you select the folder that contains `manifest.json`
+
+5. Verify Installation:
+   - You should see the extension card appear in your extensions list
+   - Look for the extension icon in your Chrome toolbar
+   - If you don't see the icon, click the puzzle piece icon in the toolbar and pin the extension 
+
+### First Run
+
+1. Click the extension icon in your Chrome toolbar
+2. The search popup will appear
+3. Try searching for text on any webpage:
+   - Type a word and press Enter to create a persistent highlight
+   - The search bar will change color to indicate the next theme
+   - Click the clock icon to see your search history
+
+### Troubleshooting
+
+If the extension isn't working:
+1. Make sure Developer Mode is enabled
+2. Try reloading the extension (click the refresh icon on the extension card)
+3. Check the Chrome console for any error messages
+4. Verify that all files are present in the extension folder:
+   - manifest.json
+   - popup.html
+   - src/content.js
+   - src/content.css
+   - src/popup.js
 
 ## Usage
 
