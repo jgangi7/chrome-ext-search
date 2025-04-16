@@ -15,6 +15,7 @@
       position: relative;
       display: flex;
       align-items: center;
+      transition: background-color 0.2s ease;
     }
     .search-input {
       width: 250px;
@@ -36,12 +37,9 @@
       color: rgba(0, 0, 0, 0.5);
     }
 
-    .search-input:disabled {
-      background-color: white !important;
-      color: #666;
-    }
-
-    body.limit-reached {
+    body.limit-reached,
+    body.limit-reached .search-container,
+    body.limit-reached .search-input {
       background-color: white !important;
     }
 
@@ -121,18 +119,15 @@
 
     /* Theme variations */
     body.theme-purple:not(.limit-reached),
-    body.theme-purple:not(.limit-reached) .search-input:not(:disabled),
-    body.theme-purple:not(.limit-reached) .history-list {
+    body.theme-purple:not(.limit-reached) .search-container {
       background-color: #C45AB3;
     }
     body.theme-blue:not(.limit-reached),
-    body.theme-blue:not(.limit-reached) .search-input:not(:disabled),
-    body.theme-blue:not(.limit-reached) .history-list {
+    body.theme-blue:not(.limit-reached) .search-container {
       background-color: #5762D5;
     }
     body.theme-gold:not(.limit-reached),
-    body.theme-gold:not(.limit-reached) .search-input:not(:disabled),
-    body.theme-gold:not(.limit-reached) .history-list {
+    body.theme-gold:not(.limit-reached) .search-container {
       background-color: #DDA448;
     }
   </style>

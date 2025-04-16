@@ -53,6 +53,10 @@ async function initializePopup() {
     currentTab = tab;
     console.log('Current tab:', tab.url);
 
+    // Set initial theme colors
+    searchInput.style.backgroundColor = THEME_COLORS[currentTheme];
+    document.body.style.backgroundColor = THEME_COLORS[currentTheme];
+
     // Check if we can search in this page
     if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
       console.log('Cannot search in Chrome system page');
@@ -175,8 +179,9 @@ function cycleToNextTheme() {
   // Add new theme class
   document.body.classList.add(`theme-${currentTheme}`);
   
-  // Update search input background color
+  // Update search input and body background color
   searchInput.style.backgroundColor = THEME_COLORS[currentTheme];
+  document.body.style.backgroundColor = THEME_COLORS[currentTheme];
 }
 
 // Handle search button click
