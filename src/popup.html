@@ -17,19 +17,46 @@
       position: relative;
       display: flex;
       align-items: center;
+      padding: 8px;
     }
     .search-input {
-      width: 100%;
-      padding: 8px 70px 8px 12px;
+      width: calc(100% - 40px);
+      padding: 8px 12px;
       border: none;
       font-size: 14px;
       box-sizing: border-box;
       outline: none;
       background: #9CB380;
       color: white;
+      border-radius: 4px;
     }
     .search-input::placeholder {
       color: rgba(255, 255, 255, 0.7);
+    }
+    .search-button {
+      width: 32px;
+      height: 32px;
+      margin-left: 8px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+    }
+    .search-button:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    .search-button:disabled {
+      color: rgba(255, 255, 255, 0.3);
+      cursor: not-allowed;
+    }
+    .search-button svg {
+      width: 20px;
+      height: 20px;
     }
     .nav-buttons {
       position: absolute;
@@ -80,9 +107,14 @@
     autofill="off"
     role="textbox"
   >
+  <button id="searchButton" class="search-button" title="Search">
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+    </svg>
+  </button>
 </div>
 
-<script src="script.js"></script>
+<script src="popup.js"></script>
 
 </body>
 </html>

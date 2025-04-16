@@ -20,6 +20,7 @@ let searchHistory = [];
 
 // Get DOM elements
 const searchInput = document.getElementById('searchInput');
+const searchButton = document.getElementById('searchButton');
 const historyIcon = document.getElementById('historyIcon');
 const historyList = document.getElementById('historyList');
 
@@ -38,35 +39,61 @@ async function initializePopup() {
   try {
     // Get the current active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab.url) return;
+    if (!tab?.id || !tab.url) {
+      console.error('No active tab found');
+      searchInput.disabled = true;
+      searchButton.disabled = true;
+      searchInput.placeholder = 'No active tab found';
+      return;
+    }
 
     currentTab = tab;
+    console.log('Current tab:', tab.url);
 
     // Check if we can search in this page
     if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+      console.log('Cannot search in Chrome system page');
       searchInput.disabled = true;
+      searchButton.disabled = true;
       searchInput.placeholder = 'Cannot search in Chrome system pages';
       return;
     }
 
     // Try to inject content script first
-    await ensureContentScriptLoaded();
+    try {
+      await ensureContentScriptLoaded();
+      console.log('Content script loaded successfully');
+    } catch (error) {
+      console.error('Failed to load content script:', error);
+      searchInput.disabled = true;
+      searchButton.disabled = true;
+      searchInput.placeholder = 'Failed to load search functionality';
+      return;
+    }
 
     // Setup event listeners
     searchInput.addEventListener('input', handleSearch);
     searchInput.addEventListener('keydown', handleKeyDown);
-    historyIcon.addEventListener('click', toggleHistoryList);
-    document.addEventListener('click', handleClickOutside);
+    searchButton.addEventListener('click', handleSearchButtonClick);
+    if (historyIcon) {
+      historyIcon.addEventListener('click', toggleHistoryList);
+      document.addEventListener('click', handleClickOutside);
+    }
 
     // Get current search terms
-    const response = await chrome.tabs.sendMessage(currentTab.id, {
-      action: 'getSearchTerms'
-    });
-    
-    if (response && response.terms) {
-      searchHistory = response.terms;
-      updateHistoryList();
-      checkHistoryLimit();
+    try {
+      const response = await chrome.tabs.sendMessage(currentTab.id, {
+        action: 'getSearchTerms'
+      });
+      
+      if (response && response.terms) {
+        searchHistory = response.terms;
+        updateHistoryList();
+        checkHistoryLimit();
+      }
+    } catch (error) {
+      console.error('Failed to get search terms:', error);
+      // Don't disable search if this fails, just start with empty history
     }
 
     // Focus the search input if not disabled
@@ -76,6 +103,7 @@ async function initializePopup() {
   } catch (error) {
     console.error('Error initializing popup:', error);
     searchInput.disabled = true;
+    searchButton.disabled = true;
     searchInput.placeholder = 'Error initializing search';
   }
 }
@@ -128,45 +156,51 @@ function cycleToNextTheme() {
   }
 }
 
+// Handle search button click
+async function handleSearchButtonClick() {
+  if (!searchInput.value.trim()) return;
+  
+  try {
+    if (!contentScriptLoaded) {
+      await ensureContentScriptLoaded();
+    }
+
+    const searchValue = searchInput.value.trim();
+    
+    // Send search request with current theme
+    const response = await chrome.tabs.sendMessage(currentTab.id, {
+      action: 'search',
+      query: searchValue,
+      theme: currentTheme,
+      persist: true
+    });
+
+    if (!response.searchLimitReached) {
+      // Add to search history
+      searchHistory.push({ query: searchValue, theme: currentTheme });
+      updateHistoryList();
+    }
+
+    // Clear input and cycle theme
+    searchInput.value = '';
+    cycleToNextTheme();
+    
+    // Check if we've reached the limit
+    if (checkHistoryLimit()) {
+      document.body.classList.add('limit-reached');
+    } else {
+      searchInput.focus();
+    }
+  } catch (error) {
+    console.error('Error on search button click:', error);
+  }
+}
+
 // Handle keydown events
 async function handleKeyDown(event) {
   if (event.key === 'Enter' && searchInput.value.trim()) {
     event.preventDefault();
-    
-    try {
-      if (!contentScriptLoaded) {
-        await ensureContentScriptLoaded();
-      }
-
-      const searchValue = searchInput.value.trim();
-      
-      // Send search request with current theme
-      const response = await chrome.tabs.sendMessage(currentTab.id, {
-        action: 'search',
-        query: searchValue,
-        theme: currentTheme,
-        persist: true
-      });
-
-      if (!response.searchLimitReached) {
-        // Add to search history
-        searchHistory.push({ query: searchValue, theme: currentTheme });
-        updateHistoryList();
-      }
-
-      // Clear input and cycle theme
-      searchInput.value = '';
-      cycleToNextTheme();
-      
-      // Check if we've reached the limit
-      if (checkHistoryLimit()) {
-        document.body.classList.add('limit-reached');
-      } else {
-        searchInput.focus();
-      }
-    } catch (error) {
-      console.error('Error on Enter search:', error);
-    }
+    await handleSearchButtonClick();
   }
 }
 
@@ -213,12 +247,15 @@ function handleSearch() {
 
 // Ensure content script is loaded with retries
 async function ensureContentScriptLoaded(retryCount = 0) {
-  if (!currentTab?.id) return;
+  if (!currentTab?.id) {
+    throw new Error('No active tab');
+  }
 
   try {
     // Try to send a test message to check if content script is loaded
     await chrome.tabs.sendMessage(currentTab.id, { action: 'ping' });
     contentScriptLoaded = true;
+    return;
   } catch (error) {
     if (retryCount >= MAX_RETRIES) {
       console.error('Failed to load content script after retries');
@@ -227,7 +264,12 @@ async function ensureContentScriptLoaded(retryCount = 0) {
 
     // If content script is not loaded, inject it
     console.log(`Content script not loaded, injecting... (attempt ${retryCount + 1})`);
-    await injectContentScript();
+    try {
+      await injectContentScript();
+    } catch (error) {
+      console.error('Failed to inject content script:', error);
+      throw error;
+    }
     
     // Wait a bit longer before retrying
     await new Promise(resolve => setTimeout(resolve, 200));
@@ -239,17 +281,19 @@ async function ensureContentScriptLoaded(retryCount = 0) {
 
 // Inject content script if not already loaded
 async function injectContentScript() {
-  if (!currentTab?.id) return;
+  if (!currentTab?.id) {
+    throw new Error('No active tab');
+  }
 
   try {
     await chrome.scripting.insertCSS({
       target: { tabId: currentTab.id },
-      files: ['content.css']
+      files: ['src/content.css']
     });
 
     await chrome.scripting.executeScript({
       target: { tabId: currentTab.id },
-      files: ['content.js']
+      files: ['src/content.js']
     });
 
     // Wait for script to initialize
