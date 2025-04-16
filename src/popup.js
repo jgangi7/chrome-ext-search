@@ -31,6 +31,9 @@ function checkHistoryLimit() {
     searchInput.placeholder = 'Maximum of 4 search terms reached';
     return true;
   }
+  document.body.classList.remove('limit-reached');
+  searchInput.disabled = false;
+  searchInput.placeholder = 'Search in page...';
   return false;
 }
 
@@ -89,6 +92,10 @@ async function initializePopup() {
       if (response && response.terms) {
         searchHistory = response.terms;
         updateHistoryList();
+        // Show history list if there are terms
+        if (searchHistory.length > 0 && historyList) {
+          historyList.classList.add('visible');
+        }
         checkHistoryLimit();
       }
     } catch (error) {
@@ -109,7 +116,9 @@ async function initializePopup() {
 }
 
 function toggleHistoryList() {
-  historyList.classList.toggle('visible');
+  if (searchHistory.length > 0) {
+    historyList.classList.toggle('visible');
+  }
 }
 
 function handleClickOutside(event) {
@@ -119,10 +128,18 @@ function handleClickOutside(event) {
 }
 
 function updateHistoryList() {
+  if (!historyList) {
+    console.error('History list element not found');
+    return;
+  }
+
   historyList.innerHTML = '';
   searchHistory.forEach((item, index) => {
     const div = document.createElement('div');
     div.className = 'history-item';
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'history-item-content';
     
     const colorDot = document.createElement('span');
     colorDot.className = 'history-item-color';
@@ -131,18 +148,23 @@ function updateHistoryList() {
     const text = document.createElement('span');
     text.textContent = item.query;
     
-    div.appendChild(colorDot);
-    div.appendChild(text);
+    const deleteButton = document.createElement('span');
+    deleteButton.className = 'history-item-delete';
+    deleteButton.textContent = '×';
+    deleteButton.onclick = (e) => {
+      e.stopPropagation();
+      removeSearchTerm(index);
+    };
+    
+    contentDiv.appendChild(colorDot);
+    contentDiv.appendChild(text);
+    div.appendChild(contentDiv);
+    div.appendChild(deleteButton);
     historyList.appendChild(div);
   });
 }
 
 function cycleToNextTheme() {
-  if (searchHistory.length >= MAX_HISTORY) {
-    document.body.classList.add('limit-reached');
-    return;
-  }
-
   // Remove current theme class
   document.body.classList.remove(`theme-${currentTheme}`);
   
@@ -150,23 +172,39 @@ function cycleToNextTheme() {
   themeIndex = (themeIndex + 1) % THEMES.length;
   currentTheme = THEMES[themeIndex];
   
-  // Add new theme class if not default
-  if (currentTheme !== 'default') {
-    document.body.classList.add(`theme-${currentTheme}`);
-  }
+  // Add new theme class
+  document.body.classList.add(`theme-${currentTheme}`);
+  
+  // Update search input background color
+  searchInput.style.backgroundColor = THEME_COLORS[currentTheme];
 }
 
 // Handle search button click
 async function handleSearchButtonClick() {
-  if (!searchInput.value.trim()) return;
+  const searchValue = searchInput.value.trim();
+  if (!searchValue) return;
   
   try {
+    // Ensure content script is loaded
+    if (!contentScriptLoaded) {
+      await ensureContentScriptLoaded();
+    }
+    
+    // Perform the search
+    await performSearch(searchValue);
+  } catch (error) {
+    console.error('Error on search button click:', error);
+  }
+}
+
+// Perform search and update history
+async function performSearch(searchValue) {
+  try {
+    // Ensure content script is loaded
     if (!contentScriptLoaded) {
       await ensureContentScriptLoaded();
     }
 
-    const searchValue = searchInput.value.trim();
-    
     // Send search request with current theme
     const response = await chrome.tabs.sendMessage(currentTab.id, {
       action: 'search',
@@ -174,25 +212,42 @@ async function handleSearchButtonClick() {
       theme: currentTheme,
       persist: true
     });
-
-    if (!response.searchLimitReached) {
+    
+    if (response && !response.error) {
       // Add to search history
       searchHistory.push({ query: searchValue, theme: currentTheme });
       updateHistoryList();
-    }
-
-    // Clear input and cycle theme
-    searchInput.value = '';
-    cycleToNextTheme();
-    
-    // Check if we've reached the limit
-    if (checkHistoryLimit()) {
-      document.body.classList.add('limit-reached');
+      
+      // Clear input and cycle theme
+      searchInput.value = '';
+      cycleToNextTheme();
+      
+      // Show history list after adding new term
+      if (historyList) {
+        historyList.classList.add('visible');
+      }
+      
+      // Check if we've reached the limit
+      checkHistoryLimit();
+      
+      // Focus the input if not disabled
+      if (!searchInput.disabled) {
+        searchInput.focus();
+      }
     } else {
-      searchInput.focus();
+      console.error('Search failed:', response?.error);
     }
   } catch (error) {
-    console.error('Error on search button click:', error);
+    console.error('Error performing search:', error);
+    // Try to recover by reloading content script
+    contentScriptLoaded = false;
+    try {
+      await ensureContentScriptLoaded();
+      // Retry search
+      await performSearch(searchValue);
+    } catch (retryError) {
+      console.error('Failed to recover from search error:', retryError);
+    }
   }
 }
 

@@ -30,27 +30,32 @@ class SearchManager {
           sendResponse({ status: 'ok' });
           break;
         case 'search':
-          this.handleSearch(request.query, request.persist, request.theme).then(response => {
-            // Only log search when persist flag is true (Enter key pressed)
-            if (request.persist) {
-              this.logSearch(request.query, response.matchCount);
-              // Add to search terms if persistent
-              if (!response.searchLimitReached) {
-                this.searchTerms.push({ query: request.query, theme: request.theme });
-              }
+          // Handle search synchronously to ensure response is sent
+          const response = this.handleSearch(request.query, request.persist, request.theme);
+          
+          // Only log search when persist flag is true (Enter key pressed)
+          if (request.persist) {
+            this.logSearch(request.query, response.matchCount);
+            // Add to search terms if persistent
+            if (!response.searchLimitReached) {
+              this.searchTerms.push({ query: request.query, theme: request.theme });
             }
-            // Add search limit info to response
-            response.searchLimitReached = this.persistentHighlights.size >= this.MAX_PERSISTENT_SEARCHES;
-            sendResponse(response);
-          });
+          }
+          
+          // Add search limit info to response
+          response.searchLimitReached = this.persistentHighlights.size >= this.MAX_PERSISTENT_SEARCHES;
+          sendResponse(response);
           break;
         case 'getSearchTerms':
           sendResponse({ terms: this.searchTerms });
           break;
+        case 'removeSearchTerm':
+          const result = this.removeSearchTerm(request.index);
+          sendResponse(result);
+          break;
       }
 
-      // Keep the message channel open for async response
-      return true;
+      return false; // Don't keep the message channel open
     });
   }
 
@@ -74,7 +79,7 @@ class SearchManager {
     }
   }
 
-  async handleSearch(query, persist = false, theme = 'default') {
+  handleSearch(query, persist = false, theme = 'default') {
     // Check if we've reached the limit for persistent searches
     if (persist && this.persistentHighlights.size >= this.MAX_PERSISTENT_SEARCHES) {
       return {
@@ -158,8 +163,9 @@ class SearchManager {
       this.persistentHighlights.set(query, Array.from(highlights));
     }
 
+    // At the end of the method, return the result with searchLimitReached flag
     return {
-      matchCount,
+      matchCount: matchCount,
       searchLimitReached: this.persistentHighlights.size >= this.MAX_PERSISTENT_SEARCHES
     };
   }
@@ -174,6 +180,10 @@ class SearchManager {
         parent.normalize();
       }
     });
+  }
+
+  removeSearchTerm(index) {
+    // Implementation of removeSearchTerm method
   }
 }
 
